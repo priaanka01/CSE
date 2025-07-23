@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Diatomic Helium Gas Simulation</title>
+  <style>
+    canvas {
+      background: #111;
+      display: block;
+      margin: 0 auto;
+      border: 2px solid #444;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gasCanvas" width="800" height="600"></canvas>
+
+  <script>
+    const canvas = document.getElementById('gasCanvas');
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    const moleculeCount = 30;
+    const dt = 0.1;
+
+    class Atom {
+      constructor(x, y, vx, vy) {
+        this.x = x;
+        this.y = y;
+        this.vx = vx;
+        this.vy = vy;
+      }
+
+      update() {
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+
+        // Wall collisions
+        if (this.x < 0 || this.x > width) this.vx *= -1;
+        if (this.y < 0 || this.y > height) this.vy *= -1;
+      }
+    }
+
+    class DiatomicMolecule {
+      constructor(x, y, vx, vy) {
+        const offset = 8;
+        this.a1 = new Atom(x - offset, y, vx, vy);
+        this.a2 = new Atom(x + offset, y, vx, vy);
+        this.restLength = 2 * offset;
+      }
+
+      applyVanDerWaals() {
+        const dx = this.a2.x - this.a1.x;
+        const dy = this.a2.y - this.a1.y;
+        let r = Math.sqrt(dx * dx + dy * dy);
+        if (r < 0.1) r = 0.1; // prevent singularity
+
+        // Lennard-Jones potential (simplified forces)
+        const sigma = 16, epsilon = 1;
+        const r2 = r * r;
+        const r6 = r2 * r2 * r2;
+        const r12 = r6 * r6;
+        const fmag = 24 * epsilon * (2 * (sigma ** 12) / r13(r) - (sigma ** 6) / r7(r));
+
+        const fx = fmag * dx / r;
+        const fy = fmag * dy / r;
+
+        // Apply equal and opposite forces
+        this.a1.vx -= fx * dt;
+        this.a1.vy -= fy * dt;
+        this.a2.vx += fx * dt;
+        this.a2.vy += fy * dt;
+      }
+
+      maintainBond() {
+        const dx = this.a2.x - this.a1.x;
+        const dy = this.a2.y - this.a1.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const diff = dist - this.restLength;
+        const k = 0.05;
+        const fx = k * diff * (dx / dist);
+        const fy = k * diff * (dy / dist);
+
+        this.a1.vx += fx * dt;
+        this.a1.vy += fy * dt;
+        this.a2.vx -= fx * dt;
+        this.a2.vy -= fy * dt;
+      }
+
+      update() {
+        this.applyVanDerWaals();
+        this.maintainBond();
+        this.a1.update();
+        this.a2.update();
+      }
+
+      draw() {
+        ctx.beginPath();
+        ctx.moveTo(this.a1.x, this.a1.y);
+        ctx.lineTo(this.a2.x, this.a2.y);
+        ctx.strokeStyle = 'lightblue';
+        ctx.stroke();
+
+        ctx.fillStyle = 'skyblue';
+        ctx.beginPath();
+        ctx.arc(this.a1.x, this.a1.y, 5, 0, 2 * Math.PI);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(this.a2.x, this.a2.y, 5, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+    }
+
+    function r7(r) {
+      return Math.pow(r, 7);
+    }
+
+    function r13(r) {
+      return Math.pow(r, 13);
+    }
+
+    const molecules = [];
+    for (let i = 0; i < moleculeCount; i++) {
+      const x = Math.random() * width;
+      const y = Math.random() * height;
+      const vx = (Math.random() - 0.5) * 100;
+      const vy = (Math.random() - 0.5) * 100;
+      molecules.push(new DiatomicMolecule(x, y, vx, vy));
+    }
+
+    function loop() {
+      ctx.clearRect(0, 0, width, height);
+      for (let mol of molecules) {
+        mol.update();
+        mol.draw();
+      }
+      requestAnimationFrame(loop);
+    }
+
+    loop();
+  </script>
+</body>
+</html>
