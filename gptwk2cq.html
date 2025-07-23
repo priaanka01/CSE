@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Helium Gas Simulation</title>
+  <style>
+    body { background: #111; color: #fff; text-align: center; font-family: sans-serif; }
+    canvas { background: #000; display: block; margin: auto; }
+  </style>
+</head>
+<body>
+<div id="temp">Temperature: -- K</div>
+<canvas id="c" width="800" height="600"></canvas>
+<script>
+const ctx = c.getContext("2d"), W = c.width, H = c.height;
+const N = 15, R = 4, L = 20, k = 0.1, dt = 0.02, eps = 1, sigma = 10;
+const KB = 1.38e-23, M = 6.64e-27, VEL_SCALE = 100;
+
+class Atom {
+  constructor(x, y, vx, vy) { Object.assign(this, {x, y, vx, vy, fx: 0, fy: 0}); }
+  applyForce(fx, fy) { this.fx += fx; this.fy += fy; }
+  update() {
+    this.vx += this.fx * dt; this.vy += this.fy * dt;
+    this.x += this.vx * dt; this.y += this.vy * dt; this.fx = this.fy = 0;
+    if (this.x < R || this.x > W - R) this.vx *= -1;
+    if (this.y < R || this.y > H - R) this.vy *= -1;
+    this.x = Math.max(R, Math.min(W - R, this.x));
+    this.y = Math.max(R, Math.min(H - R, this.y));
+  }
+  draw() {
+    ctx.beginPath(); ctx.arc(this.x, this.y, R, 0, 2 * Math.PI);
+    ctx.fillStyle = 'lightblue'; ctx.fill();
+  }
+  v2() { return this.vx * this.vx + this.vy * this.vy; }
+}
+
+class Molecule {
+  constructor(a, b) { this.a = a; this.b = b; }
+  bond() {
+    let dx = this.b.x - this.a.x, dy = this.b.y - this.a.y;
+    let d = Math.hypot(dx, dy), f = -k * (d - L);
+    let fx = f * dx / d, fy = f * dy / d;
+    this.a.applyForce(fx, fy); this.b.applyForce(-fx, -fy);
+  }
+  draw() {
+    ctx.beginPath(); ctx.moveTo(this.a.x, this.a.y); ctx.lineTo(this.b.x, this.b.y);
+    ctx.strokeStyle = 'white'; ctx.stroke();
+    this.a.draw(); this.b.draw();
+  }
+}
+
+let mols = [];
+for (let i = 0; i < N; i++) {
+  let x = Math.random() * (W - 100) + 50, y = Math.random() * (H - 100) + 50;
+  let a = Math.random() * Math.PI * 2, dx = L * Math.cos(a), dy = L * Math.sin(a);
+  let vx = (Math.random() - 0.5) * 50, vy = (Math.random() - 0.5) * 50;
+  let a1 = new Atom(x, y, vx, vy), a2 = new Atom(x + dx, y + dy, vx, vy);
+  mols.push(new Molecule(a1, a2));
+}
+
+function applyLJ() {
+  let atoms = mols.flatMap(m => [m.a, m.b]);
+  for (let i = 0; i < atoms.length; i++) {
+    for (let j = i + 1; j < atoms.length; j++) {
+      let a = atoms[i], b = atoms[j];
+      let dx = b.x - a.x, dy = b.y - a.y, r = Math.hypot(dx, dy);
+      if (r < 2 * L && r > 0) {
+        let sr6 = (sigma / r) ** 6;
+        let f = 24 * eps * ((2 * sr6 ** 2) - sr6) / r;
+        let fx = f * dx / r, fy = f * dy / r;
+        a.applyForce(-fx, -fy); b.applyForce(fx, fy);
+      }
+    }
+  }
+}
+
+function calcTemp() {
+  let atoms = mols.flatMap(m => [m.a, m.b]);
+  let v2avg = atoms.reduce((sum, a) => sum + a.v2(), 0) / atoms.length;
+  return (M * v2avg * VEL_SCALE**2) / (3 * KB);
+}
+
+function animate() {
+  ctx.clearRect(0, 0, W, H);
+  applyLJ();
+  mols.forEach(m => { m.bond(); m.a.update(); m.b.update(); m.draw(); });
+  temp.textContent = "Temperature: " + calcTemp().toFixed(1) + " K";
+  requestAnimationFrame(animate);
+}
+animate();
+</script>
+</body>
+</html>
