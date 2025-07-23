@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Diatomic Helium Simulation</title>
+<style>canvas{background:#111;display:block;margin:0 auto;border:2px solid #444;}</style></head>
+<body><canvas id="gasCanvas" width="800" height="600"></canvas>
+<script>
+const c=document.getElementById('gasCanvas'),x=c.getContext('2d'),W=c.width,H=c.height,N=30,dt=0.1;
+class Atom{constructor(x,y,vx,vy){Object.assign(this,{x,y,vx,vy})}u(){this.x+=this.vx*dt;this.y+=this.vy*dt;if(this.x<0||this.x>W)this.vx*=-1;if(this.y<0||this.y>H)this.vy*=-1}}
+class Molecule{
+  constructor(x,y,vx,vy){let o=8;this.a1=new Atom(x-o,y,vx,vy);this.a2=new Atom(x+o,y,vx,vy);this.l=2*o;}
+  vdw(){let dx=this.a2.x-this.a1.x,dy=this.a2.y-this.a1.y,r=Math.hypot(dx,dy)||0.1,s=16,e=1,r2=r*r,r6=r2**3,r12=r6**2,f=24*e*((2*s**12/r**13)-(s**6/r**7)),fx=f*dx/r,fy=f*dy/r;
+    this.a1.vx-=fx*dt;this.a1.vy-=fy*dt;this.a2.vx+=fx*dt;this.a2.vy+=fy*dt;}
+  bond(){let dx=this.a2.x-this.a1.x,dy=this.a2.y-this.a1.y,d=Math.hypot(dx,dy),df=d-this.l,k=0.05,fx=k*df*dx/d,fy=k*df*dy/d;
+    this.a1.vx+=fx*dt;this.a1.vy+=fy*dt;this.a2.vx-=fx*dt;this.a2.vy-=fy*dt;}
+  u(){this.vdw();this.bond();this.a1.u();this.a2.u();}
+  d(){x.beginPath();x.moveTo(this.a1.x,this.a1.y);x.lineTo(this.a2.x,this.a2.y);x.strokeStyle='lightblue';x.stroke();
+    [this.a1,this.a2].forEach(a=>{x.beginPath();x.arc(a.x,a.y,5,0,2*Math.PI);x.fillStyle='skyblue';x.fill();});}
+}
+let m=[...Array(N)].map(()=>new Molecule(Math.random()*W,Math.random()*H,(Math.random()-.5)*100,(Math.random()-.5)*100));
+(function loop(){x.clearRect(0,0,W,H);m.forEach(o=>{o.u();o.d();});requestAnimationFrame(loop);})();
+</script></body></html>
