@@ -8,17 +8,15 @@ def travellingSalesmanProblem(graph,s):
             vertex.append(i)
     min_path=maxsize
     next_permutation=permutations(vertex)
-
     for i in next_permutation:
         current_pathweight=0
         k=s
         for j in i:
-            current_pathweight += graph[k][j]
+            current_pathweight+=graph[k][j]
             k=j
-        current_pathweight += graph[k][s]
+        current_pathweight+=graph[k][s]
         min_path=min(min_path,current_pathweight)
     return min_path
-
 graph=[
     [0,10,15,20],
     [10,0,35,25],
